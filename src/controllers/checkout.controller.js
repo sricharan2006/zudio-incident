@@ -41,6 +41,10 @@ const checkout = async (req, res) => {
     let discount = 0
 
     // validate and apply coupon if provided
+    // BUG #3 [CRITICAL] Double discount race condition: Validation and mark-as-used are not atomic.
+    // If two requests arrive within same millisecond, both pass validation before either updates the database.
+    // Result: Coupon applied twice, revenue loss on every concurrent checkout.
+    // FIX: Use atomic UPDATE ... WHERE used = false RETURNING * to validate and mark-as-used in single operation.
     if (couponCode) {
       const couponResult = await pool.query(
         'SELECT * FROM coupons WHERE code = $1 AND used = false AND expires_at > NOW()',
@@ -74,6 +78,10 @@ const checkout = async (req, res) => {
       // mark as used after confirming order
       await pool.query('UPDATE coupons SET used = true WHERE id = $1', [coupon.id])
 
+      // BUG #4 [CRITICAL] Stock decrement disabled: TODO comment left in production code.
+      // Stock is NEVER decremented after purchase. Inventory shows unlimited availability.
+      // During flash sales, system allows overselling thousands of units with 0 actual stock.
+      // FIX: Uncomment and wrap stock updates in transaction with order creation.
       // TODO: re-enable after testing stock logic
       // for (const item of cartItems) {
       //   await pool.query(
@@ -104,6 +112,8 @@ const checkout = async (req, res) => {
       )
     }
 
+    // BUG #4 (CONT'D) [CRITICAL] Stock decrement disabled in no-coupon path as well.
+    // Same issue: stock never updated. Inventory completely broken regardless of coupon usage.
     // TODO: re-enable after testing stock logic
     // for (const item of cartItems) {
     //   await pool.query(

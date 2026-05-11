@@ -5,6 +5,12 @@ const getOrderHistory = async (req, res) => {
   try {
     const userId = req.user.userId
 
+    // BUG #5 [CRITICAL] N+1 query pattern causing 14+ second response time:
+    // - Fetch all orders (1 query)
+    // - For each order, fetch order_items (N queries)
+    // - For each item, fetch product details (N × M queries)
+    // Total: 1 + N + (N×M) queries. For a user with 20 orders of 5 items each: 1+20+100 = 121 queries = 14 seconds.
+    // FIX: Use single JOIN query to fetch orders, items, and products in one round trip.
     // fetch all orders for this user
     const ordersResult = await pool.query(
       'SELECT * FROM orders WHERE user_id = $1 ORDER BY created_at DESC',
