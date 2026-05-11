@@ -1,7 +1,6 @@
 const pool = require('../db')
 const jwt = require('jsonwebtoken')
-// bcrypt is installed but haven't wired it up yet
-// const bcrypt = require('bcrypt')
+const bcrypt = require('bcrypt')
 // express-validator for future validation
 const { validationResult } = require('express-validator')
 
@@ -21,10 +20,13 @@ const register = async (req, res) => {
       return res.status(409).json({ error: 'Email already registered' })
     }
 
-    // TODO: add password hashing before prod — ask Rahul
+    // BUG #2 [CRITICAL] Plaintext password storage — FIXED
+    // Changed from: storing plaintext password
+    // To: hashing password with bcrypt before storage (12 salt rounds)
+    const hashedPassword = await bcrypt.hash(password, 12)
     const result = await pool.query(
       'INSERT INTO users (name, email, password, phone) VALUES ($1, $2, $3, $4) RETURNING id, name, email, phone, created_at',
-      [name, email, password, phone || null]
+      [name, email, hashedPassword, phone || null]
     )
 
     const user = result.rows[0]
@@ -63,8 +65,11 @@ const login = async (req, res) => {
 
     const user = result.rows[0]
 
-    // compare password — TODO: use bcrypt.compare once hashing is added
-    if (user.password !== password) {
+    // BUG #2 (CONT'D) [CRITICAL] Plaintext password comparison — FIXED
+    // Changed from: if (user.password !== password) - plaintext comparison
+    // To: using bcrypt.compare() to securely verify hashed passwords
+    const isPasswordValid = await bcrypt.compare(password, user.password)
+    if (!isPasswordValid) {
       return res.status(401).json({ error: 'Invalid credentials' })
     }
 
