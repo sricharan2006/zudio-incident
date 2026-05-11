@@ -69,17 +69,6 @@ zudio-backend/
 
 ---
 
-## 🧰 Tech Stack
-
-| Layer | Technology |
-|-------|-----------|
-| ⚙️ Runtime | Node.js 18 |
-| 🌐 Framework | Express 4 |
-| 🗄️ Database | PostgreSQL (node-postgres) |
-| 🔑 Auth | JSON Web Tokens |
-| 🔧 Dev | Nodemon |
-
----
 
 ## 📜 Scripts
 
