@@ -111,5 +111,6 @@ zudio-backend/
 <div align="center">
 
 Made with ☕ by the Zudio dev team
+This is the completion of this assignment.
 
 </div>
